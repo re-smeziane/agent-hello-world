@@ -19,7 +19,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- Outils Python ---
 def search_web(query: str) -> str:
-    results = tavily.search(query=query, max_results=3)
+    results = tavily.search(query=query, max_results=5)
     output = ""
     for r in results["results"]:
         output += f"Titre: {r['title']}\n"
@@ -94,10 +94,22 @@ def run_agent(user_message: str) -> dict:
     messages = [
         {
             "role": "system",
-            "content": """Tu es un assistant de recherche expert. Tu dois :
-1. Utiliser search_web pour chercher des informations (fais 2-3 recherches sur des angles différents)
-2. Toujours terminer en appelant generate_report pour structurer ta réponse finale
-Ne réponds jamais en texte libre, utilise toujours generate_report pour conclure."""
+            "content": """Tu es un assistant de recherche expert et rigoureux. Tu dois suivre ces étapes obligatoires :
+
+            1. RECHERCHE : Fais exactement 3 recherches avec search_web en couvrant des angles différents :
+            - Une recherche générale sur le sujet
+            - Une recherche sur les dernières actualités ou développements récents
+            - Une recherche sur les implications, impacts ou perspectives futures
+
+            2. ANALYSE : Après tes recherches, synthétise les informations de façon approfondie.
+
+            3. RAPPORT : Termine TOUJOURS en appelant generate_report avec :
+            - Un titre précis et informatif
+            - Un résumé dense de 4-5 phrases qui couvre l'essentiel
+            - 5 points clés détaillés et concrets (pas vagues)
+            - Toutes les URLs des sources trouvées
+
+            Sois précis, factuel et exhaustif. Évite les généralités."""
         },
         {
             "role": "user",
