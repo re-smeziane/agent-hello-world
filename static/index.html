@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Research Agent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    h1 { font-size: 2rem; margin-bottom: 8px; color: #ffffff; }
+
+    p.subtitle { color: #888; margin-bottom: 40px; font-size: 0.95rem; }
+
+    .search-box {
+      width: 100%;
+      max-width: 750px;
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    input {
+      flex: 1;
+      padding: 14px 18px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    input:focus { border-color: #6c63ff; }
+
+    button {
+      padding: 14px 24px;
+      border-radius: 10px;
+      border: none;
+      background: #6c63ff;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover { background: #574fd6; }
+    button:disabled { background: #444; cursor: not-allowed; }
+
+    .loader {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #333;
+      border-top-color: #6c63ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loader-text { color: #666; font-size: 0.9rem; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .report {
+      width: 100%;
+      max-width: 750px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 20px 24px;
+    }
+
+    .card-label {
+      font-size: 0.7rem;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .report-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .summary { line-height: 1.7; color: #bbb; }
+
+    .key-points { display: flex; flex-direction: column; gap: 8px; }
+
+    .point {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      line-height: 1.6;
+      color: #ccc;
+    }
+
+    .point::before {
+      content: "→";
+      color: #6c63ff;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .searches {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      background: #2a2a3a;
+      color: #6c63ff;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+    }
+
+    .sources { display: flex; flex-direction: column; gap: 6px; }
+
+    .source a {
+      color: #6c63ff;
+      font-size: 0.85rem;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .source a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <h1>🔍 Research Agent</h1>
+  <p class="subtitle">Pose une question, l'agent cherche sur le web et génère un rapport structuré.</p>
+
+  <div class="search-box">
+    <input type="text" id="question" placeholder="Ex: Quelles sont les dernières nouvelles sur l'IA ?" />
+    <button id="btn" onclick="search()">Rechercher</button>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    <div class="loader-text" id="loader-text">L'agent recherche...</div>
+  </div>
+
+  <div class="report" id="report">
+
+    <div class="card">
+      <div class="card-label">🔎 Recherches effectuées</div>
+      <div class="searches" id="searches"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">📄 Titre</div>
+      <div class="report-title" id="title"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">📝 Résumé</div>
+      <div class="summary" id="summary"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">💡 Points clés</div>
+      <div class="key-points" id="key-points"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">🔗 Sources</div>
+      <div class="sources" id="sources"></div>
+    </div>
+
+  </div>
+
+  <script>
+    document.getElementById("question").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") search();
+    });
+
+    async function search() {
+      const question = document.getElementById("question").value.trim();
+      if (!question) return;
+
+      const btn = document.getElementById("btn");
+      const loader = document.getElementById("loader");
+      const report = document.getElementById("report");
+
+      btn.disabled = true;
+      loader.style.display = "flex";
+      report.style.display = "none";
+
+      try {
+        const response = await fetch("/research", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+
+        const data = await response.json();
+        const r = data.report;
+
+        // Searches
+        document.getElementById("searches").innerHTML =
+          data.searches.map(s => `<span class="tag">${s}</span>`).join("");
+
+        // Title
+        document.getElementById("title").textContent = r.title;
+
+        // Summary
+        document.getElementById("summary").textContent = r.summary;
+
+        // Key points
+        document.getElementById("key-points").innerHTML =
+          r.key_points.map(p => `<div class="point">${p}</div>`).join("");
+
+        // Sources
+        document.getElementById("sources").innerHTML =
+          r.sources.map(s => `<div class="source"><a href="${s}" target="_blank">${s}</a></div>`).join("");
+
+        report.style.display = "flex";
+
+      } catch (err) {
+        alert("Erreur lors de la requête.");
+      } finally {
+        btn.disabled = false;
+        loader.style.display = "none";
+      }
+    }
+  </script>
+
+</body>
+</html>
